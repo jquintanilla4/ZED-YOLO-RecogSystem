@@ -1,6 +1,7 @@
 # ZED Installation on Win10
 
 You need to use Anaconda.
+
 0. Install the ZED SDK 4.0+
 1. Create an Python 3.7 environment
 2. Open Conda Terminal
@@ -17,7 +18,7 @@ C:\Users\remko\anaconda3\envs\ZED5gpu_env\Lib\site-packages\pyzed
 11. Launch VSCode via Code . or from within Anaconda Navigator. Both work, but you may have to resign in to your plug-ins if you use the one from Anaconda Navigator.
 12. Make sure you're using the correct python interpreter inside of VSCode. Check the bottom VSCode.
 
-************Note:************ If you don’t have the already built 'sl.cp37-win_amd64.pyd' from the src build folder in the ZED ZED_API_installation folder on the D: Drive. Then you can rebuild it, following the instructions below.
+**Note:** If you don’t have the already built 'sl.cp37-win_amd64.pyd' from the src build folder in the ZED ZED_API_installation folder on the D: Drive. Then you can rebuild it, following the instructions below.
 
 ### Building a Cython extension
 
