@@ -357,10 +357,11 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
             # renders the 2d view of the image
             cv_viewer.render_2D(image_left_ocv, image_scale, objects, detection_parameters.enable_tracking)
             
-            # Display the image using OpenCV
-            cv2.imshow(f"2D View Camera {camera_index}", image_left_ocv)
-            # This allows OpenCV to process its event queue
-            cv2.waitKey(10)
+            if opt.dev:
+                # Display the image using OpenCV
+                cv2.imshow(f"2D View Camera {camera_index}", image_left_ocv)
+                # This allows OpenCV to process its event queue
+                cv2.waitKey(10)
 
             # If 'q' is pressed, exit the loop
             if keyboard.is_pressed('q'):
@@ -386,6 +387,7 @@ parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='mo
 parser.add_argument('--svo', type=str, default=None, help='optional svo file')
 parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
 parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
+parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows')
 opt = parser.parse_args()
 
 
