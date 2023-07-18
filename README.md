@@ -56,3 +56,11 @@ conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cud
 ```
 
 That should do it. Update index within Anaconda Navigator, and always run Anaconda prompt as administrator
+
+
+### YOLO Models
+
+Download the necessary models for YOLOv8
+- yolov8m.pt
+
+[https://github.com/ultralytics/ultralytics](Ultralytics Github Repo)
