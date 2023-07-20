@@ -140,7 +140,7 @@ def detections_to_custom_box(detections, im0): # input is a list of detections a
 
 # Function that runs YOLO on a separate thread
 def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7, i=0): # conf originally 0.4, iou originally 0.45
-    global class_names, yolo_output_label, global_run_signal, global_exit_signal
+    global class_names, yolo_output_label, global_run_signal, global_exit_signal, yolo_output_id
     try:
         print(f"Starting Torch Thread for camera {i}")
         print("Initializing Network...")
@@ -166,7 +166,7 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7, i=0): # conf 
                     img = cv2.cvtColor(image_list[i], cv2.COLOR_BGRA2RGB)
                         
                     # Run YOLO on the image on the GPU
-                    det = model.predict(img, save=False, imgsz=img_size, conf=conf_thres, iou=iou_thres, verbose=False)[0].cpu().numpy().boxes
+                    det = model.track(img, save=False, imgsz=img_size, conf=conf_thres, iou=iou_thres, tracker='bytetrack.yaml', verbose=False)[0].cpu().numpy().boxes
 
                     # Filter detections to only keep humans, class 0
                     det = [det for det in det if det.cls == 0]
@@ -180,6 +180,10 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7, i=0): # conf 
                             yolo_output_label = yolo_output.label
                     except Exception as e:
                         print("Error in yolo output label: ", e)
+
+                    for yolo_output in det:
+                        # print(f"Yolo output: {yolo_output}")
+                        yolo_output_id = int(yolo_output.id.item())
 
                     # Release the lock
                     lock_list[i].release()
@@ -335,6 +339,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
                         # Print the shared(world) coordinates
                         # print(f"Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
+                        print(f"Yolo ID: {yolo_output_id}, Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
 
                         # Create a dictionary TESTING
                         data = {
@@ -387,7 +392,7 @@ parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='mo
 parser.add_argument('--svo', type=str, default=None, help='optional svo file')
 parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
 parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
-parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows')
+parser.add_argument('--dev', action='store_true', default='--dev', help='dev mode gives you OpenCV windows')
 opt = parser.parse_args()
 
 
