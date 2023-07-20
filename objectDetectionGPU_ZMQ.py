@@ -393,7 +393,7 @@ opt = parser.parse_args()
 
 def main():
     # Load calibration data
-    with open('calibration/calibration02.json', 'r') as f:
+    with open('calibration/calibration03.json', 'r') as f:
         calibration = json.load(f)
 
     # Determine the order of cameras
