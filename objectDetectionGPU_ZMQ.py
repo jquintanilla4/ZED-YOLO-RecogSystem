@@ -339,11 +339,11 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
                         # Print the shared(world) coordinates
                         # print(f"Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
-                        print(f"Yolo ID: {yolo_output_id}, Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
+                        # print(f"Yolo ID: {yolo_output_id}, Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
 
                         # Create a dictionary TESTING
                         data = {
-                            'obj_id': obj.id,
+                            'obj_id': yolo_output_id,
                             'type': 'coord',
                             'x': points_shared[0],
                             'y': points_shared[1],
