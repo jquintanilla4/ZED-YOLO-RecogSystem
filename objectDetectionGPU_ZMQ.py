@@ -23,6 +23,7 @@ from ultralytics import YOLO
 from threading import Lock, Thread
 from time import sleep
 
+import open3d as o3d
 import cv_viewer.tracking_viewer as cv_viewer
 
 import zmq
@@ -55,6 +56,8 @@ image_list = [[] for _ in range(num_cameras)]
 detection_list = [[] for _ in range(num_cameras)]
 # Create a list of locks for each camera
 lock_list = [Lock() for _ in range(num_cameras)]
+# Create a list of lists for point clouds
+point_cloud_list = [[] for _ in range(num_cameras)]
 
 # Global run signal for all threads
 global_run_signal = False
@@ -249,7 +252,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
     if camera_index == camera_index_list[0]: #Only runs YOLO on camera 1
         # Create a new thread for each camera to run YOLO model
-        print(f"Starting YOLO torch thread for cameras {camera_index}...")
+        print(f"Starting YOLO torch thread for camera {camera_index}...")
         capture_thread = Thread(target=torch_thread, kwargs={'weights': opt.weights, 'img_size': opt.img_size, 'conf_thres': opt.conf_thres, 'i': i})
         capture_thread.start()
         print(f"YOLO torch thread started for camera {camera_index}...")
@@ -286,6 +289,13 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
     image_scale = [display_resolution.width / camera_res.width, display_resolution.height / camera_res.height]
     image_left_ocv = np.full((display_resolution.height, display_resolution.width, 4), [245, 239, 239, 255], np.uint8) # 4 channels, light grey RGBA
 
+    # Initialize O3D visualizer
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+
+    # Create an empty point cloud
+    pcd = o3d.geometry.PointCloud()
+
     # Detect objects loop
     while not global_exit_signal:
         # If able to grab image from camera
@@ -293,9 +303,74 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
             # Acquire lock
             lock_list[i].acquire()
+
             # Retrieve image from left camera
             zed.retrieve_image(image_left_tmp, sl.VIEW.LEFT)
             image_list[i] = image_left_tmp.get_data()
+
+            # Retrieve the point clouds
+            point_cloud = sl.Mat()
+            zed.retrieve_measure(point_cloud, sl.MEASURE.XYZRGBA)
+            point_cloud_data = point_cloud.get_data()
+            # Print the first part of the point cloud data
+            # print('First part of point cloud data:', point_cloud_data[:5, :5, :])
+
+            # Release lock
+            lock_list[i].release()
+
+            # POINT CLOUD VISUALIZATION BLOCK
+            # Acquire lock
+            lock_list[i].acquire()
+
+            # Transform the second camera's point cloud to the first camera's coordinate system
+            if i == 1:
+                # create homogeneous version of the point cloud
+                hom_point_cloud = np.dstack([point_cloud_data[..., :3], np.ones_like(point_cloud_data[..., :1])])
+                print("Shape of hom_point_cloud: ", hom_point_cloud.shape)
+                print("Shape of trans1to2.T: ", trans1to2.T.shape)            
+                # apply the transformation matrix
+                transformed_point_cloud = np.tensordot(hom_point_cloud, trans1to2.T, axes=1)
+                # store the transformed point cloud in a new list
+                point_cloud_list[i] = transformed_point_cloud[..., :3]
+            else:
+                point_cloud_list[i] = point_cloud_data[..., :3]
+
+            # Wait until both point clouds are ready
+            while isinstance(point_cloud_list[0], list) or isinstance(point_cloud_list[1], list):
+                sleep(0.01)  # Small delay to prevent busy waiting
+
+            print("Shape of point_cloud_list[0]: ", point_cloud_list[0].shape)
+            print("Shape of point_cloud_list[1]: ", point_cloud_list[1].shape)
+
+            # Merge point clounds from both cameras
+            merged_point_cloud = np.concatenate((point_cloud_list[0], point_cloud_list[1]), axis=0)
+
+            # reshape the point cloud to 2D
+            merged_point_cloud = merged_point_cloud.reshape(-1, 3)
+
+            # replace nan values with 0.0
+            merged_point_cloud = np.nan_to_num(merged_point_cloud, nan=0.0)
+
+            # ensure the point cloud is float
+            merged_point_cloud = merged_point_cloud.astype(np.float64)
+            
+            # Convert to Open3D point cloud
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(merged_point_cloud)
+
+            # Outlier removal on the merged point cloud
+            pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+
+            # Voxel downsampling on average overalapping points on the merged point cloud
+            voxel_size = 0.05
+            pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
+
+            # Update the visualizer with the new point cloud
+            vis.add_geometry(pcd)
+            vis.update_geometry(pcd)
+            vis.poll_events()
+            vis.update_renderer()
+
             # Release lock
             lock_list[i].release()
 
@@ -343,7 +418,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
                         # Create a dictionary TESTING
                         data = {
-                            'obj_id': obj.id,
+                            'obj_id': yolo_output_id,
                             'type': 'coord',
                             'x': points_shared[0],
                             'y': points_shared[1],
@@ -376,6 +451,9 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
         else:
             global_exit_signal = True
             break
+    
+    # Close the visualizer
+    vis.destroy_window()
 
     # Close the camera
     global_exit_signal = True
