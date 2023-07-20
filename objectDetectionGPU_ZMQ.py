@@ -249,7 +249,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
 
     if camera_index == camera_index_list[0]: #Only runs YOLO on camera 1
         # Create a new thread for each camera to run YOLO model
-        print(f"Starting YOLO torch thread for camera {camera_index}...")
+        print(f"Starting YOLO torch thread for cameras {camera_index}...")
         capture_thread = Thread(target=torch_thread, kwargs={'weights': opt.weights, 'img_size': opt.img_size, 'conf_thres': opt.conf_thres, 'i': i})
         capture_thread.start()
         print(f"YOLO torch thread started for camera {camera_index}...")
