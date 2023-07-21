@@ -392,7 +392,7 @@ parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='mo
 parser.add_argument('--svo', type=str, default=None, help='optional svo file')
 parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
 parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
-parser.add_argument('--dev', action='store_true', default='--dev', help='dev mode gives you OpenCV windows')
+parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows') # remember to revert back, no default
 opt = parser.parse_args()
 
 
