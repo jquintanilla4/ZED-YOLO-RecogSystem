@@ -219,6 +219,7 @@ def open_camera(camera_index, svo_filepath=None):
         # Set up camera parameters
         init_params = sl.InitParameters(svo_real_time_mode=True)
         init_params.depth_mode = sl.DEPTH_MODE.ULTRA
+        init_params.camera_resolution = sl.RESOLUTION.HD1080 # TESTING 1080
         init_params.coordinate_units = sl.UNIT.METER
         init_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP
         init_params.depth_maximum_distance = 50
@@ -282,7 +283,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
     camera_res = camera_infos.camera_configuration.resolution
 
     # Display
-    display_resolution = sl.Resolution(min(camera_res.width, 1280), min(camera_res.height, 720))
+    display_resolution = sl.Resolution(min(camera_res.width, 1920), min(camera_res.height, 1080)) # TESTING 1080
     image_scale = [display_resolution.width / camera_res.width, display_resolution.height / camera_res.height]
     image_left_ocv = np.full((display_resolution.height, display_resolution.width, 4), [245, 239, 239, 255], np.uint8) # 4 channels, light grey RGBA
 
@@ -392,13 +393,13 @@ parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='mo
 parser.add_argument('--svo', type=str, default=None, help='optional svo file')
 parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
 parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
-parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows') # remember to revert back, no default
+parser.add_argument('--dev', action='store_true', default='--dev', help='dev mode gives you OpenCV windows') # remember to revert back, no default
 opt = parser.parse_args()
 
 
 def main():
     # Load calibration data
-    with open('calibration/calibration03.json', 'r') as f:
+    with open('calibration/calibration05_bird.json', 'r') as f:
         calibration = json.load(f)
 
     # Determine the order of cameras
