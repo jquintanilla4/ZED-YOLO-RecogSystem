@@ -341,6 +341,7 @@ def main_loop(i, svo_filepath=None, trans1to2=None):
                         # Print the shared(world) coordinates
                         # print(f"Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
                         # print(f"Yolo ID: {yolo_output_id}, Object ID: {obj.id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
+                        # print(f"Yolo ID: {yolo_output_id}, X: {points_shared[0]}, Y: {points_shared[1]}, Z: {points_shared[2]}")
 
                         # Create a dictionary TESTING
                         data = {
@@ -393,13 +394,13 @@ parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='mo
 parser.add_argument('--svo', type=str, default=None, help='optional svo file')
 parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
 parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
-parser.add_argument('--dev', action='store_true', default='--dev', help='dev mode gives you OpenCV windows') # remember to revert back, no default
+parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows') # remember to revert back, no default
 opt = parser.parse_args()
 
 
 def main():
     # Load calibration data
-    with open('calibration/calibration05_bird.json', 'r') as f:
+    with open('calibration/calibration08.json', 'r') as f:
         calibration = json.load(f)
 
     # Determine the order of cameras
