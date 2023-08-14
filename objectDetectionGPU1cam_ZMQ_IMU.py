@@ -1,3 +1,10 @@
+import zmq
+import cv_viewer.tracking_viewer as cv_viewer
+from time import sleep
+from threading import Lock, Thread
+from ultralytics import YOLO
+import pyzed.sl as sl
+import cv2
 import os
 import numpy as np
 import keyboard
@@ -8,21 +15,12 @@ import torch
 print("PyTorch version: ", torch.__version__)
 print("CUDA available: ", torch.cuda.is_available())
 print("CUDA version: ", torch.version.cuda)
-import cv2
-import pyzed.sl as sl
-from ultralytics import YOLO
 
-from threading import Lock, Thread
-from time import sleep
-
-import cv_viewer.tracking_viewer as cv_viewer
-
-import zmq
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
 publisher.bind('tcp://*:5555')
 
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 zed = sl.Camera()  # create a camera object
 lock = Lock()  # create a lock object
@@ -68,6 +66,33 @@ def detections_to_custom_box(detections, im0):
         output.append(obj)
     return output
 
+
+# Function retrieve IMU and calculate rotation
+def get_rotation_matrix(zed):
+    sensor_data = sl.SensorsData()
+    err = zed.get_sensors_data(sensor_data, sl.TIME_REFERENCE.CURRENT)
+    if err != sl.ERROR_CODE.SUCCESS:
+        print("Error retrieving IMU data")
+        return None
+
+    # Get the orientation
+    imu_data = sensor_data.get_imu_data()
+    # print(f"IMU Data: {dir(imu_data)}")
+    orientation = imu_data.get_pose().get_orientation()
+    # print(f"Orientation attributes: {dir(orientation)}")
+
+    # Get rotation matrix
+    rotation_matrix = orientation.get_rotation_matrix()
+    print(f"Rotation Matrix: {dir(rotation_matrix)}")
+    # Accessing the raw data, a 3x3 matrix
+    rotation_matrix_raw = rotation_matrix.r
+
+    print(f"Camera IMU Transform(Rotation Matrix): {rotation_matrix_raw}")
+    
+    return rotation_matrix_raw
+
+
+
 # Function that runs YOLO on a separate thread
 def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
     global image, class_names, yolo_output_label, global_run_signal, global_exit_signal, detections, det
@@ -75,7 +100,7 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
         print("Starting Torch Thread")
         print("Initializing Network...")
 
-        model = YOLO(weights)        
+        model = YOLO(weights)
         model.to('cuda')
 
         class_names = model.names
@@ -115,7 +140,7 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
                 global_run_signal = False
 
             sleep(0.1)
-    
+
         print("Completed Torch Thread")
 
     except Exception as e:
@@ -123,13 +148,14 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
         import traceback
         traceback.print_exc()
 
+
 def open_camera(svo_filepath=None):
     input_type = sl.InputType()
 
     if svo_filepath is not None:
         input_type.set_from_svo_file(svo_filepath)
         print(f"Using SVO file {svo_filepath}")
-    
+
     init_params = sl.InitParameters(svo_real_time_mode=True)
     init_params.depth_mode = sl.DEPTH_MODE.ULTRA
     init_params.camera_resolution = sl.RESOLUTION.HD1080
@@ -141,13 +167,13 @@ def open_camera(svo_filepath=None):
     if err != sl.ERROR_CODE.SUCCESS:
         print(f"Error {err} opening camera")
         exit(1)
-    
+
     print("Initialized camera")
     return zed
 
+
 def main(svo_filepath=None):
     global image, global_run_signal, global_exit_signal, detections
-
 
     print("Initializing CUDA...")
     if torch.cuda.is_available():
@@ -159,7 +185,7 @@ def main(svo_filepath=None):
     print("YOLO torch thread started...")
 
     zed = open_camera(svo_filepath)
-    
+
     # set runtime parameters
     runtime_params = sl.RuntimeParameters()
 
@@ -177,7 +203,7 @@ def main(svo_filepath=None):
 
     # set object deteciton runtime parameters
     detection_runtime_parameters = sl.ObjectDetectionRuntimeParameters()
-    
+
     # to store detected objects
     objects = sl.Objects()
 
@@ -187,6 +213,9 @@ def main(svo_filepath=None):
     display_resolution = sl.Resolution(min(camera_res.width, 1920), min(camera_res.height, 1080))
     image_scale = [display_resolution.width / camera_res.width, display_resolution.height / camera_res.height]
     image_left_ocv = np.full((display_resolution.height, display_resolution.width, 4), [245, 239, 239, 255], np.uint8)
+
+    # Get the rotation matrix outside of the loop, because the camera is fixed
+    rotation_matrix = get_rotation_matrix(zed)
 
     while not global_exit_signal:
         if zed.grab(runtime_params) == sl.ERROR_CODE.SUCCESS:
@@ -215,24 +244,34 @@ def main(svo_filepath=None):
                         # Use YOLO ID for corresponding detection
                         yolo_id = None
                         if i < len(det) and det[i].id is not None:
-                            yolo_id = int(det[i].id.item())  
+                            yolo_id = int(det[i].id.item())
+
+                            # Get the array ready for rotation matrix
+                            position_vector = np.array([obj.position[0], obj.position[1], obj.position[2]])
+                            # Rotate the position using the rotation matrix
+                            xyz_rotated = np.dot(rotation_matrix, position_vector)
 
                             # Dictionary to send over ZMQ
                             data = {
                                 'obj_id': yolo_id,
                                 'type': 'coord',
-                                'x': obj.position[0],
-                                'y': obj.position[1],
-                                'z': obj.position[2]
+                                'x': xyz_rotated[0],
+                                'y': xyz_rotated[1],
+                                'z': xyz_rotated[2]
                             }
                             data_list.append(data)
 
                             json_string = json.dumps(data_list)
                             publisher.send_string(json_string)
 
+                            # print for debugging
+                            if opt.dev:
+                                print(f"obj_id: {yolo_id}, x: {xyz_rotated[0]}, y: {xyz_rotated[1]}, z: {xyz_rotated[2]}")
+
             np.copyto(image_left_ocv, image_left_tmp.get_data())
-            cv_viewer.render_2D(image_left_ocv, image_scale, objects, detection_parameters.enable_tracking)
-            
+            cv_viewer.render_2D(image_left_ocv, image_scale,
+                                objects, detection_parameters.enable_tracking)
+
             if opt.dev:
                 cv2.imshow("2D View Camera", image_left_ocv)
                 cv2.waitKey(10)
@@ -259,6 +298,6 @@ if __name__ == '__main__':
     parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
     parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows')
     opt = parser.parse_args()
-    
+
     with torch.no_grad():
         main()

@@ -3,6 +3,7 @@ import zmq
 import asyncio
 import websockets
 import json
+from math import isnan
 
 context = zmq.Context()
 subscriber = context.socket(zmq.SUB)
@@ -51,6 +52,8 @@ async def echo(websocket, _):
 
 
                   for data in data_list: # Send each object's data
+                        if any(isnan(value) for value in data.values()): # Check if any values are NaN
+                              continue # Skip the object if it contains a value NaN
                         await websocket.send(json.dumps(data)) # converts it back to a json string
 
                   await asyncio.sleep(0.001)
@@ -64,7 +67,7 @@ async def echo(websocket, _):
 
 async def main():
     global server, unreal_disconnected
-    server = await websockets.serve(echo, "localhost", 8765)
+    server = await websockets.serve(echo, "0.0.0.0", 8765)
 
     while True:
         try:
