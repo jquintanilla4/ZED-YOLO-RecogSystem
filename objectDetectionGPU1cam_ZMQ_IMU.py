@@ -16,6 +16,9 @@ print("PyTorch version: ", torch.__version__)
 print("CUDA available: ", torch.cuda.is_available())
 print("CUDA version: ", torch.version.cuda)
 
+# import transform_coord function from UEcoordsTransform.py
+from utilities.UEcoordsTransform import transform_coord
+
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
 publisher.bind('tcp://*:5555')
@@ -83,11 +86,10 @@ def get_rotation_matrix(zed):
 
     # Get rotation matrix
     rotation_matrix = orientation.get_rotation_matrix()
-    print(f"Rotation Matrix: {dir(rotation_matrix)}")
     # Accessing the raw data, a 3x3 matrix
     rotation_matrix_raw = rotation_matrix.r
 
-    print(f"Camera IMU Transform(Rotation Matrix): {rotation_matrix_raw}")
+    print(f"Camera IMU Transform(Rotation Matrix):\n {rotation_matrix_raw}")
     
     return rotation_matrix_raw
 
@@ -126,13 +128,6 @@ def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
                         yolo_output_label = yolo_output.label
                 except Exception as e:
                     print("Error in yolo output label: ", e)
-
-                # Get YOLO output id
-                # for yolo_output in det:
-                #     if yolo_output.id is not None:
-                #         yolo_output_id = int(yolo_output.id.item())
-                #     else:
-                #         yolo_output_id = None
 
                 lock.release()
 
@@ -251,13 +246,17 @@ def main(svo_filepath=None):
                             # Rotate the position using the rotation matrix
                             xyz_rotated = np.dot(rotation_matrix, position_vector)
 
+                            # Apply the UE coordinate system
+                            ue_xyz = transform_coord(xyz_rotated[0], xyz_rotated[1], xyz_rotated[2])
+
+
                             # Dictionary to send over ZMQ
                             data = {
                                 'obj_id': yolo_id,
                                 'type': 'coord',
-                                'x': xyz_rotated[0],
-                                'y': xyz_rotated[1],
-                                'z': xyz_rotated[2]
+                                'x': ue_xyz[0],
+                                'y': ue_xyz[1],
+                                'z': ue_xyz[2]
                             }
                             data_list.append(data)
 

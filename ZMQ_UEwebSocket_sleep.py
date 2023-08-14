@@ -52,7 +52,8 @@ async def echo(websocket, _):
 
 
                   for data in data_list: # Send each object's data
-                        if any(isnan(value) for value in data.values()): # Check if any values are NaN
+                        # Check if any of the values are NaN
+                        if any(isnan(float(value)) if isinstance(value, (int, float, str)) and str(value).replace('.','',1).isdigit() else False for value in data.values()):
                               continue # Skip the object if it contains a value NaN
                         await websocket.send(json.dumps(data)) # converts it back to a json string
 
