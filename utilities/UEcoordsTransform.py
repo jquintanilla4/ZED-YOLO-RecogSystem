@@ -1,9 +1,11 @@
 import numpy as np
  
 # Hard-coded transformation matrix based on previous calculations
-transformation_matrix = [[7.04386539,  -62.84728308, -53.63967912, -209.74621511],
-                         [-9.78825137,  94.3098506,  78.02257427,  310.22675916],
-                         [0.,       0.,        0.,     0.]]
+transformation_matrix = [
+    [ 0.8955993,   4.01533272, -1.03931414,  8.98924958],
+    [-0.72900398 , 5.40907055, -1.03829074, 13.43140586],
+    [ 0.,          0.,          0. ,         0. ,       ]
+]
 transformation_matrix = np.vstack([transformation_matrix, [0, 0, 0, 1]])
  
  

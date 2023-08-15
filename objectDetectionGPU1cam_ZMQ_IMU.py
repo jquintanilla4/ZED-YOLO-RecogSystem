@@ -96,7 +96,7 @@ def get_rotation_matrix(zed):
 
 
 # Function that runs YOLO on a separate thread
-def torch_thread(weights, img_size, conf_thres=0.7, iou_thres=0.7):
+def torch_thread(weights, img_size, conf_thres=0.5, iou_thres=0.7):
     global image, class_names, yolo_output_label, global_run_signal, global_exit_signal, detections, det
     try:
         print("Starting Torch Thread")
@@ -265,7 +265,7 @@ def main(svo_filepath=None):
 
                             # print for debugging
                             if opt.dev:
-                                print(f"obj_id: {yolo_id}, x: {xyz_rotated[0]}, y: {xyz_rotated[1]}, z: {xyz_rotated[2]}")
+                                print(f"obj_id: {yolo_id}, x: {ue_xyz[0]}, y: {ue_xyz[1]}, z: {ue_xyz[2]}")
 
             np.copyto(image_left_ocv, image_left_tmp.get_data())
             cv_viewer.render_2D(image_left_ocv, image_scale,
@@ -294,7 +294,7 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default='models/yolov8m.pt', help='model.pt path(s)')
     parser.add_argument('--svo', type=str, default=None, help='optional svo file')
     parser.add_argument('--img_size', type=int, default=416, help='inference size (pixels)')
-    parser.add_argument('--conf_thres', type=float, default=0.7, help='object confidence threshold')
+    parser.add_argument('--conf_thres', type=float, default=0.5, help='object confidence threshold')
     parser.add_argument('--dev', action='store_true', help='dev mode gives you OpenCV windows')
     opt = parser.parse_args()
 
