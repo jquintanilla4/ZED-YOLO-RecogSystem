@@ -1,3 +1,8 @@
+# 1 ZED camera
+# 1 YOLOv8 instance on GPU for ZED camera
+# YOLOv8 bounding box fed to the ZED SDK
+# The detection results are published to a ZMQ socket
+
 import os
 import numpy as np
 import keyboard

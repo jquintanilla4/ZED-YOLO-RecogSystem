@@ -1,3 +1,10 @@
+# 1 ZED camera
+# 1 YOLOv8 instance on GPU for ZED camera
+# YOLOv8 bounding box fed to the ZED SDK
+# IMU data is retrieved from the ZED SDK and used to calculate the rotation matrix
+# The rotation matrix is the further transformed using UEcoordsTransform.py for Unreal Engine
+# The results are published to a ZMQ socket
+
 import zmq
 import cv_viewer.tracking_viewer as cv_viewer
 from time import sleep
@@ -19,10 +26,12 @@ print("CUDA version: ", torch.version.cuda)
 # import transform_coord function from UEcoordsTransform.py
 from utilities.UEcoordsTransform import transform_coord
 
+# ZMQ details
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
 publisher.bind('tcp://*:5555')
 
+# Set environment variable to allow duplicate library loading
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 zed = sl.Camera()  # create a camera object
