@@ -14,8 +14,6 @@ subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
 
 server = None # Global variable for the server
 seen_objects = {} # Dictionary to keep track of seen objects and loops since last seen
-static_objects = {} # Dictionary to keep track of static objects
-STATIC_OBJ_TIME_THRESHOLD_IN_SECS = 5 # number of seconds before an object is considered static
 unreal_disconnected = False # Flag for when Unreal Engine disconnects
 
 
@@ -62,7 +60,7 @@ async def echo(websocket, _):
                         if any(str(value).lower() == 'nan' or (isinstance(value, (int, float)) and isnan(value)) for value in data.values()):
                               continue # Skip the object if it contains a value NaN
 
-                        # Check if the object is static
+                        # Check if the object is static in the scene longer than 10 seconds 
                         log_static_object(data['obj_id'], data['x'], data['y'], data['z'])
                         if is_static_obj(data['obj_id']):
                               continue

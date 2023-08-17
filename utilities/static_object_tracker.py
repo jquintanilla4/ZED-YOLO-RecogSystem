@@ -1,5 +1,8 @@
 import time
 
+static_objects = {} # Dictionary to keep track of static objects
+STATIC_OBJ_TIME_THRESHOLD_IN_SECS = 10 # number of seconds before an object is considered static
+
 def log_static_object(obj_id: str, x: float, y: float, z: float):
       global static_objects
       if obj_id not in static_objects:
