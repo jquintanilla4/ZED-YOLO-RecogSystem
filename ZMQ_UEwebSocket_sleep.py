@@ -4,6 +4,8 @@ import asyncio
 import websockets
 import json
 from math import isnan
+from utilities.static_object_tracker import log_static_object, is_static_obj
+
 
 context = zmq.Context()
 subscriber = context.socket(zmq.SUB)
@@ -12,7 +14,11 @@ subscriber.setsockopt_string(zmq.SUBSCRIBE, '')
 
 server = None # Global variable for the server
 seen_objects = {} # Dictionary to keep track of seen objects and loops since last seen
+static_objects = {} # Dictionary to keep track of static objects
+STATIC_OBJ_TIME_THRESHOLD_IN_SECS = 5 # number of seconds before an object is considered static
 unreal_disconnected = False # Flag for when Unreal Engine disconnects
+
+
 
 async def echo(websocket, _):
       global seen_objects, unreal_disconnected
@@ -55,6 +61,12 @@ async def echo(websocket, _):
                         # Check if any of the values are NaN
                         if any(str(value).lower() == 'nan' or (isinstance(value, (int, float)) and isnan(value)) for value in data.values()):
                               continue # Skip the object if it contains a value NaN
+
+                        # Check if the object is static
+                        log_static_object(data['obj_id'], data['x'], data['y'], data['z'])
+                        if is_static_obj(data['obj_id']):
+                              continue
+                        
                         await websocket.send(json.dumps(data)) # converts it back to a json string
 
                   await asyncio.sleep(0.001)
