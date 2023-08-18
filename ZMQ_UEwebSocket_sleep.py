@@ -4,7 +4,6 @@ import asyncio
 import websockets
 import json
 from math import isnan
-from utilities.static_object_tracker import log_static_object, is_static_obj
 
 
 context = zmq.Context()
@@ -59,11 +58,6 @@ async def echo(websocket, _):
                         # Check if any of the values are NaN
                         if any(str(value).lower() == 'nan' or (isinstance(value, (int, float)) and isnan(value)) for value in data.values()):
                               continue # Skip the object if it contains a value NaN
-
-                        # Check if the object is static in the scene longer than 10 seconds 
-                        log_static_object(data['obj_id'], data['x'], data['y'], data['z'])
-                        if is_static_obj(data['obj_id']):
-                              continue
                         
                         await websocket.send(json.dumps(data)) # converts it back to a json string
 

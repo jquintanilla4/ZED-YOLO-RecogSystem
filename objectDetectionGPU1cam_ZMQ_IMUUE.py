@@ -179,6 +179,16 @@ def open_camera(svo_filepath=None):
 def main(svo_filepath=None):
     global image, global_run_signal, global_exit_signal, detections
 
+    # initialize movement tracker and thresholds for static objects
+    movement_tracker = {} # Key: object ID, Value: [last position, last time]
+    movement_threshold = 3 # time in seconds to consider an object as static
+    movement_distance_threshold = 0.05 # distance in meters to consider an object as static
+
+    # dictionary for tracking objects
+    tracking_dict = {}
+    # number of frames to account for in glitch correction
+    N = 5
+
     print("Initializing CUDA...")
     if torch.cuda.is_available():
         _ = torch.cuda.FloatTensor(1)
@@ -250,6 +260,17 @@ def main(svo_filepath=None):
                         if i < len(det) and det[i].id is not None:
                             yolo_id = int(det[i].id.item())
 
+                            # update tracking dictionary
+                            if yolo_id not in tracking_dict:
+                                tracking_dict[yolo_id] = [yolo_id] * N
+                            else:
+                                tracking_dict[yolo_id].pop(0)
+                                tracking_dict[yolo_id].append(yolo_id)
+                            
+                            # check for a glitch and corrct it
+                            if tracking_dict[yolo_id].count(yolo_id) < N - 1:
+                                yolo_id = tracking_dict[yolo_id][0]
+
                             # Get the array ready for rotation matrix
                             position_vector = np.array([obj.position[0], obj.position[1], obj.position[2]])
                             # Rotate the position using the rotation matrix
@@ -258,6 +279,27 @@ def main(svo_filepath=None):
                             # Apply the UE coordinate system
                             ue_xyz = transform_coord(xyz_rotated[0], xyz_rotated[1], xyz_rotated[2])
 
+                            # Get current position
+                            current_position = np.array([ue_xyz[0], ue_xyz[1], ue_xyz[2]])
+
+                            # check if object has moved
+                            if yolo_id not in movement_tracker:
+                                last_position, time_since_moved = movement_tracker[yolo_id] = [current_position, 0]
+                                distance_moved = np.linalg.norm(current_position - last_position)
+                                if distance_moved > movement_distance_threshold:
+                                    # object has moved, reset the time counter
+                                    movement_tracker[yolo_id] = (current_position, 0)
+                                else:
+                                    # increment the time counter
+                                    movement_tracker[yolo_id] = (current_position, time_since_moved + 1)
+                            else:
+                                # new object, initialize the tracker
+                                movement_tracker[yolo_id] = (current_position, 0)
+
+                            # check if object has been static for a while
+                            _, time_since_moved = movement_tracker[yolo_id]
+                            if time_since_moved >= movement_threshold:
+                                continue # skip this object, do not send over ZMQ
 
                             # Dictionary to send over ZMQ
                             data = {
