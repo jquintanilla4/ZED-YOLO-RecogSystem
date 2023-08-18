@@ -184,10 +184,9 @@ def main(svo_filepath=None):
     movement_threshold = 3 # time in seconds to consider an object as static
     movement_distance_threshold = 0.05 # distance in meters to consider an object as static
 
-    # dictionary for tracking objects
-    tracking_dict = {}
-    # number of frames to account for in glitch correction
-    N = 5
+    # initialize tracking dictionary for glitch correction, id jumping from body to body in less than N frames
+    tracking_dict = {} # dictionary for tracking objects
+    N = 5 # number of frames to account for in glitch correction
 
     print("Initializing CUDA...")
     if torch.cuda.is_available():
