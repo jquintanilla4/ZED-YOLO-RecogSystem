@@ -75,7 +75,7 @@ This command tells **`setup.py`** to build the extension in place, which means t
 
 You can find the GitHub repo to the Cython Extension API build here:
 
-[https://github.com/stereolabs/zed-python-api](https://github.com/stereolabs/zed-python-api)
+[ZED python API](https://github.com/stereolabs/zed-python-api)
 
 ## ZED on GPU (YOLO)
 After installing the regular version of ZED API and doing all the  necessary changes.
@@ -94,4 +94,4 @@ That should do it. Update index within Anaconda Navigator, and always run Anacon
 Download the necessary models for YOLOv8
 - yolov8m.pt
 
-[https://github.com/ultralytics/ultralytics](Ultralytics Github Repo)
+[Ultralytics Github Repo](https://github.com/ultralytics/ultralytics)
